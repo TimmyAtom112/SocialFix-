@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merchant Dashboard | SociaFix</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
+body { background:#f4f4f4; padding:20px; }
+
+/* Navbar */
+.navbar { display:flex; justify-content:space-between; padding:15px 30px; background:#203a43; color:white; margin-bottom:20px; }
+.navbar a { color:white; text-decoration:none; font-weight:bold; margin-left:15px; }
+#notificationBell { position:relative; cursor:pointer; font-size:1.5rem; }
+#notificationCount { position:absolute; top:-8px; right:-8px; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:0.7rem; display:none; }
+
+/* Container */
+.container { max-width:900px; margin:auto; }
+/* Welcome */
+.welcome h1 { color:#203a43; margin-bottom:5px; }
+/* Profile */
+#merchantProfile { background:white; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+#merchantProfile img { width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #203a43; cursor:pointer; }
+#merchantProfile button { margin-top:10px; padding:5px 10px; background:#203a43; color:white; border:none; border-radius:5px; cursor:pointer; }
+
+/* Products */
+.products { background:white; padding:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+.products h2 { color:#203a43; margin-bottom:15px; }
+.product-card { border:1px solid #ddd; padding:12px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+.product-card h3 { color:#203a43; margin-bottom:5px; }
+.product-card p { color:#555; margin-bottom:3px; }
+.product-card button { padding:5px 10px; color:white; border:none; border-radius:5px; cursor:pointer; }
+.product-card .editBtn { background:#4CAF50; margin-right:5px; }
+.product-card .deleteBtn { background:#ff6b6b; }
+.product-card .saveBtn { background:#2196F3; margin-right:5px; }
+.product-card .cancelBtn { background:#f44336; }
+
+/* Add Product Form */
+#addProductForm { background:white; padding:15px; border-radius:8px; margin-bottom:20px; }
+#addProductForm input { padding:10px; margin-bottom:10px; width:100%; border:1px solid #ccc; border-radius:5px; }
+#addProductForm button { width:100%; padding:10px; background:#203a43; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+#addProductForm button:hover { background:#ff6b6b; }
+
+/* Notifications */
+#notificationDropdown {
+  display:none; position:absolute; right:30px; top:50px; background:white; 
+  border:1px solid #ddd; border-radius:8px; width:350px; max-height:400px; overflow-y:auto;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2); z-index:100;
+}
+#notificationDropdown div.header { padding:10px; font-weight:bold; border-bottom:1px solid #ddd; }
+#notificationList div { padding:6px 0; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; }
+
+/* Responsive */
+@media(max-width:600px){ #addProductForm input { width:100%; } }
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <strong>SociaFix</strong>
+  <div style="display:flex; align-items:center; gap:15px;">
+    <div id="notificationBell">🔔<span id="notificationCount">0</span></div>
+    <a href="#" id="logoutBtn">Logout</a>
+  </div>
+</div>
+
+<!-- Notification Dropdown -->
+<div id="notificationDropdown">
+  <div class="header">Notifications / Orders</div>
+  <div id="notificationList"><p>No notifications yet.</p></div>
+</div>
+
+<div class="container">
+  <div class="welcome">
+    <h1>Welcome, <span id="merchantName">Merchant</span> 👋</h1>
+    <p>Manage your profile, products, and communicate with buyers.</p>
+  </div>
+
+  <!-- MERCHANT PROFILE -->
+  <div id="merchantProfile">
+    <h2>My Profile</h2>
+    <div style="display:flex; align-items:center; gap:15px; margin-bottom:10px;">
+      <img id="profilePic" src="" alt="Profile Picture" title="Click to change profile picture">
+    </div>
+    <p><strong>Name:</strong> <span id="profileName"></span></p>
+    <p><strong>Email:</strong> <span id="profileEmail"></span></p>
+    <p><strong>Role:</strong> <span id="profileRole"></span></p>
+    <button id="editProfileBtn">Edit Profile</button>
+    <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
+  </div>
+
+  <!-- ADD PRODUCT -->
+  <div id="addProductForm">
+    <h2>Add New Product</h2>
+    <input type="text" id="productName" placeholder="Product Name">
+    <input type="text" id="productCategory" placeholder="Category">
+    <input type="number" id="productPrice" placeholder="Price in $" min="0">
+    <button id="addProductBtn">Add Product</button>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div class="products">
+    <h2>My Products</h2>
+    <div id="productsList"></div>
+  </div>
+</div>
+
+<!-- ===== CHAT WINDOW ===== -->
+<div id="chatWindow" style="
+display:none;
+position:fixed;
+bottom:20px;
+right:20px;
+width:320px;
+background:white;
+border-radius:10px;
+box-shadow:0 4px 15px rgba(0,0,0,0.3);
+overflow:hidden;
+z-index:999;
+">
+
+  <div style="
+    background:#203a43;
+    color:white;
+    padding:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  ">
+    <span id="chatTitle">Chat</span>
+    <button onclick="closeChat()" style="
+      background:none;border:none;color:white;cursor:pointer;">✕</button>
+  </div>
+
+  <div id="chatMessages" style="
+    height:250px;
+    overflow-y:auto;
+    padding:10px;
+    background:#f7f7f7;
+  "></div>
+
+  <div style="display:flex;padding:8px;border-top:1px solid #ddd;">
+    <input id="chatInput" type="text"
+      placeholder="Type message..."
+      style="flex:1;padding:6px;">
+    <button onclick="sendChatMessage()" style="
+      margin-left:5px;
+      background:#2196F3;
+      color:white;
+      border:none;
+      padding:6px 10px;
+      cursor:pointer;">
+      Send
+    </button>
+  </div>
+
+</div>
+<script>
+// ===== SESSION & AUTH =====
+const SESSION_KEY = 'sociafix_user';
+let merchant = JSON.parse(localStorage.getItem(SESSION_KEY));
+
+if (!merchant || merchant.role !== 'merchant') {
+    window.location.href = 'register.html';
+}
+
+// ===== LOGOUT =====
+document.getElementById('logoutBtn').onclick = () => {
+    localStorage.removeItem(SESSION_KEY);
+    window.location.href = 'register.html';
+};
+
+// ===== PROFILE =====
+const profileName = document.getElementById('profileName');
+const profileEmail = document.getElementById('profileEmail');
+const profileRole = document.getElementById('profileRole');
+const profilePic = document.getElementById('profilePic');
+const profilePicInput = document.getElementById('profilePicInput');
+const editProfileBtn = document.getElementById('editProfileBtn');
+
+function renderProfile() {
+    profileName.innerText = merchant.name;
+    profileEmail.innerText = merchant.email;
+    profileRole.innerText = merchant.role;
+    document.getElementById('merchantName').innerText = merchant.name;
+    profilePic.src = merchant.profilePic || 'https://via.placeholder.com/80?text=Avatar';
+}
+renderProfile();
+
+profilePic.onclick = () => profilePicInput.click();
+profilePicInput.onchange = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        merchant.profilePic = e.target.result;
+        saveMerchant();
+        renderProfile();
+    }
+    reader.readAsDataURL(file);
+};
+
+editProfileBtn.onclick = () => {
+    const newName = prompt('Enter new name:', merchant.name);
+    if (!newName) return;
+    const newEmail = prompt('Enter new email:', merchant.email);
+    if (!newEmail) return;
+    merchant.name = newName.trim();
+    merchant.email = newEmail.trim();
+    saveMerchant();
+    renderProfile();
+    alert('Profile updated successfully!');
+};
+
+// ===== PRODUCTS =====
+let allProducts = JSON.parse(localStorage.getItem('merchantProducts')) || [];
+
+function renderProducts() {
+    const list = document.getElementById('productsList');
+    list.innerHTML = '';
+    const merchantProducts = allProducts.filter(p => p.merchantEmail === merchant.email);
+    if (merchantProducts.length === 0) {
+        list.innerHTML = '<p>No products yet.</p>';
+        return;
+    }
+    merchantProducts.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'product-card';
+        div.innerHTML = `
+            <div>
+                <h3 id="name-${p.id}">${p.name}</h3>
+                <p>Category: <span id="category-${p.id}">${p.category}</span></p>
+                <p>Price: $<span id="price-${p.id}">${p.price}</span></p>
+            </div>
+            <div>
+                <button onclick="editProductInline(${p.id})" style="margin-right:5px; background:#4CAF50;">Edit</button>
+                <button onclick="deleteProduct(${p.id})" style="background:#f44336;">Delete</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+// ===== ADD / EDIT / DELETE PRODUCTS =====
+document.getElementById('addProductBtn').onclick = () => {
+    const name = document.getElementById('productName').value.trim();
+    const category = document.getElementById('productCategory').value.trim();
+    const price = parseFloat(document.getElementById('productPrice').value);
+    if (!name || !category || isNaN(price)) return alert('Fill all fields');
+
+    const newProduct = { id: Date.now(), name, category, price, merchantEmail: merchant.email };
+    allProducts.push(newProduct);
+    localStorage.setItem('merchantProducts', JSON.stringify(allProducts));
+    document.getElementById('productName').value = '';
+    document.getElementById('productCategory').value = '';
+    document.getElementById('productPrice').value = '';
+    renderProducts();
+}
+
+function deleteProduct(id) {
+    if (!confirm('Delete this product?')) return;
+    allProducts = allProducts.filter(p => p.id !== id);
+    localStorage.setItem('merchantProducts', JSON.stringify(allProducts));
+    renderProducts();
+}
+
+function editProductInline(id) {
+    const nameEl = document.getElementById(`name-${id}`);
+    const categoryEl = document.getElementById(`category-${id}`);
+    const priceEl = document.getElementById(`price-${id}`);
+    const product = allProducts.find(p => p.id === id);
+    if (!product) return;
+
+    nameEl.innerHTML = `<input type="text" id="input-name-${id}" value="${product.name}">`;
+    categoryEl.innerHTML = `<input type="text" id="input-category-${id}" value="${product.category}">`;
+    priceEl.innerHTML = `<input type="number" id="input-price-${id}" value="${product.price}" min="0">`;
+
+    const divButtons = nameEl.parentElement.nextElementSibling;
+    divButtons.innerHTML = `
+        <button style="margin-right:5px; background:#2196F3;" onclick="saveProductInline(${id})">Save</button>
+        <button style="background:#f44336;" onclick="cancelEdit(${id})">Cancel</button>
+    `;
+}
+
+function saveProductInline(id) {
+    const product = allProducts.find(p => p.id === id);
+    if (!product) return;
+    const newName = document.getElementById(`input-name-${id}`).value.trim();
+    const newCategory = document.getElementById(`input-category-${id}`).value.trim();
+    const newPrice = parseFloat(document.getElementById(`input-price-${id}`).value);
+    if (!newName || !newCategory || isNaN(newPrice)) return alert('Fill all fields correctly');
+    product.name = newName;
+    product.category = newCategory;
+    product.price = newPrice;
+    localStorage.setItem('merchantProducts', JSON.stringify(allProducts));
+    renderProducts();
+}
+
+function cancelEdit(id) {
+    renderProducts();
+}
+
+// ===== CHAT SYSTEM =====
+const notificationDropdown = document.getElementById('notificationDropdown');
+const notificationList = document.getElementById('notificationList');
+const notificationBell = document.getElementById('notificationBell');
+const notificationCount = document.getElementById('notificationCount');
+
+let currentChatOrderId = null;
+
+notificationBell.onclick = () => {
+    notificationDropdown.style.display = notificationDropdown.style.display === 'block' ? 'none' : 'block';
+}
+
+document.addEventListener('click', e => {
+    if (!notificationDropdown.contains(e.target) && e.target !== notificationBell) {
+        notificationDropdown.style.display = 'none';
+    }
+});
+
+function renderNotifications() {
+    const conversations = JSON.parse(localStorage.getItem('sf_conversations')) || [];
+    const merchantOrders = conversations.filter(c => c.merchantEmail === merchant.email);
+    notificationList.innerHTML = '';
+
+    if (merchantOrders.length === 0) {
+        notificationList.innerHTML = '<p>No notifications yet.</p>';
+        notificationCount.style.display = 'none';
+        return;
+    }
+
+    merchantOrders.forEach((c, i) => {
+        const unread = c.messages.filter(m => m.sender === 'buyer' && !m.read).length;
+        const div = document.createElement('div');
+        div.style.borderBottom = '1px solid #eee';
+        div.style.padding = '6px 0';
+        div.innerHTML = `
+            <strong>Order #${c.orderId}</strong> from ${c.buyerEmail}
+            ${unread > 0 ? `<span style="color:red;font-weight:bold"> (${unread} new)</span>` : ''}
+            <div style="margin-top:5px;">
+                <button onclick="openChat(${c.orderId})" style="background:#2196F3;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;">Chat</button>
+            </div>
+        `;
+        notificationList.appendChild(div);
+    });
+
+    const totalUnread = merchantOrders.reduce((sum, c) => sum + c.messages.filter(m => m.sender === 'buyer' && !m.read).length, 0);
+    if (totalUnread > 0) {
+        notificationCount.innerText = totalUnread;
+        notificationCount.style.display = 'block';
+    } else {
+        notificationCount.style.display = 'none';
+    }
+}
+
+// ===== CHAT WINDOW =====
+const chatWindow = document.getElementById('chatWindow');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+
+function openChat(orderId) {
+    chatWindow.style.display = 'block';
+    currentChatOrderId = orderId;
+    renderChatMessages();
+}
+
+function closeChat() {
+    chatWindow.style.display = 'none';
+    currentChatOrderId = null;
+}
+
+function renderChatMessages() {
+    if (!currentChatOrderId) return;
+    const conversations = JSON.parse(localStorage.getItem('sf_conversations')) || [];
+    const chat = conversations.find(c => c.orderId === currentChatOrderId);
+    if (!chat) return;
+    chatMessages.innerHTML = '';
+
+    chat.messages.forEach(msg => {
+        const bubble = document.createElement('div');
+        bubble.style.marginBottom = '8px';
+        bubble.style.padding = '6px 8px';
+        bubble.style.borderRadius = '8px';
+        bubble.style.maxWidth = '75%';
+        bubble.style.wordBreak = 'break-word';
+        if (msg.sender === 'merchant') {
+            bubble.style.background = '#2196F3';
+            bubble.style.color = 'white';
+            bubble.style.marginLeft = 'auto';
+        } else {
+            bubble.style.background = '#ddd';
+            bubble.style.marginRight = 'auto';
+        }
+        bubble.innerHTML = `<small><b>${msg.sender}</b> | ${msg.time}</small><br>${msg.text}`;
+        chatMessages.appendChild(bubble);
+    });
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // mark buyer messages as read
+    chat.messages.forEach(m => { if (m.sender === 'buyer') m.read = true; });
+    localStorage.setItem('sf_conversations', JSON.stringify(conversations));
+    renderNotifications();
+}
+
+function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text || !currentChatOrderId) return;
+    const conversations = JSON.parse(localStorage.getItem('sf_conversations')) || [];
+    const chat = conversations.find(c => c.orderId === currentChatOrderId);
+    if (!chat) return;
+
+    chat.messages.push({ sender: 'merchant', text, time: new Date().toLocaleTimeString(), read: true });
+    localStorage.setItem('sf_conversations', JSON.stringify(conversations));
+    chatInput.value = '';
+    renderChatMessages();
+}
+
+// ===== SAVE MERCHANT =====
+function saveMerchant() {
+    let users = JSON.parse(localStorage.getItem('sociafix_users')) || [];
+    const index = users.findIndex(u => u.email === merchant.email);
+    if (index !== -1) users[index] = merchant;
+    localStorage.setItem('sociafix_users', JSON.stringify(users));
+    localStorage.setItem('sociafix_user', JSON.stringify(merchant));
+}
+
+// ===== AUTO REFRESH =====
+setInterval(() => {
+    renderProducts();
+    renderNotifications();
+    renderChatMessages();
+}, 1000);
+
+// ===== INIT =====
+renderProfile();
+renderProducts();
+renderNotifications();
+
+</script>
+
+
+
+</body>
+</html>
