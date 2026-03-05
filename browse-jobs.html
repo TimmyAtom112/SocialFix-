@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browse Jobs | SociaFix</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
+body { background:#f4f4f4; padding:20px; }
+h2 { color:#203a43; margin-bottom:20px; text-align:center; }
+.navbar { display:flex; justify-content:space-between; padding:15px 30px; background:#203a43; color:white; margin-bottom:20px; }
+.navbar a { color:white; text-decoration:none; font-weight:bold; }
+.job-card { background:white; border:1px solid #ddd; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+.job-card h4 { margin-bottom:5px; color:#203a43; }
+.job-card p { margin-bottom:5px; color:#555; }
+.job-card button { padding:6px 12px; background:#ff6b6b; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <strong>SociaFix</strong>
+  <div>
+    <a href="freelancer.html" id="backBtn">Back to Profile</a>
+    <a href="#" id="logoutBtn">Logout</a>
+  </div>
+</div>
+
+<h2>Browse Jobs</h2>
+<div id="jobsContainer">
+  <p>Loading jobs...</p>
+</div>
+
+<script>
+const SESSION_KEY = "loggedInUser";
+const USERS_KEY = "socialfix-users";
+
+// ---------- Auth ----------
+let freelancer = JSON.parse(localStorage.getItem(SESSION_KEY));
+if(!freelancer || freelancer.role !== "freelancer") window.location.href="register.html";
+
+// ---------- Logout ----------
+document.getElementById("logoutBtn").onclick = ()=>{
+  localStorage.removeItem(SESSION_KEY);
+  window.location.href="register.html";
+};
+
+// ---------- Back to Profile ----------
+document.getElementById("backBtn").onclick = ()=>{
+  window.location.href="freelancer.html";
+};
+
+// ---------- Load Jobs ----------
+function loadJobs(){
+  const container = document.getElementById("jobsContainer");
+  container.innerHTML="";
+
+  const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  const clients = users.filter(u => u.role === "client");
+
+  let allJobs = [];
+  clients.forEach(client => {
+    if(client.jobs && client.jobs.length > 0){
+      client.jobs.forEach(job => {
+        allJobs.push({
+          clientName: client.name,
+          clientEmail: client.email,
+          title: job.title,
+          desc: job.desc
+        });
+      });
+    }
+  });
+
+  if(allJobs.length === 0){
+    container.innerHTML="<p>No jobs posted yet.</p>";
+    return;
+  }
+
+  allJobs.forEach((job,i)=>{
+    const div = document.createElement("div");
+    div.className = "job-card";
+    div.innerHTML = `
+      <h4>${job.title}</h4>
+      <p>${job.desc}</p>
+      <p><strong>Client:</strong> ${job.clientName}</p>
+      <button onclick="applyJob(${i})">Apply</button>
+    `;
+    container.appendChild(div);
+  });
+
+  // Store jobs globally for apply reference
+  window.allJobs = allJobs;
+}
+
+// ---------- Apply to Job ----------
+function applyJob(index){
+  const job = window.allJobs[index];
+  if(!job) return;
+
+  // Add notification to client
+  const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  const client = users.find(u => u.email === job.clientEmail && u.role === "client");
+  if(!client) return;
+
+  client.notifications = client.notifications || [];
+  client.notifications.push({
+    message: `${freelancer.name} applied for your job: "${job.title}"`,
+    date: new Date().toLocaleString()
+  });
+
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+  alert(`Applied to "${job.title}" successfully! Client will be notified.`);
+}
+
+// ---------- Initial Load ----------
+loadJobs();
+</script>
+
+</body>
+</html>

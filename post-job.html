@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Post a Job | SociaFix</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
+    body { background:#f4f6f8; }
+
+    .top-nav {
+      background:#0f2027;
+      color:#fff;
+      padding:15px 20px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .top-nav button {
+      background:#ff4d4d;
+      border:none;
+      padding:8px 14px;
+      color:#fff;
+      border-radius:5px;
+      cursor:pointer;
+    }
+
+    .main-content { padding:30px; max-width:600px; margin:0 auto; }
+
+    form {
+      background:#fff;
+      padding:20px;
+      border-radius:8px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.1);
+      display:flex;
+      flex-direction:column;
+      gap:15px;
+    }
+
+    input, textarea, select {
+      padding:10px;
+      border:1px solid #ccc;
+      border-radius:5px;
+      font-size:1rem;
+      width:100%;
+    }
+
+    button {
+      padding:12px;
+      background:#0f2027;
+      color:#fff;
+      border:none;
+      border-radius:5px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header class="top-nav">
+  <div style="display:flex; align-items:center; gap:15px;">
+    <button id="backBtn" style="background:#555; padding:6px 10px; border-radius:5px;">Back</button>
+    <h2>Post a Job</h2>
+  </div>
+  <button id="logoutBtn">Logout</button>
+</header>
+
+<main class="main-content">
+  <form id="jobForm">
+    <input type="text" id="jobTitle" placeholder="Job Title" required>
+    <textarea id="jobDesc" placeholder="Job Description" rows="5" required></textarea>
+    <input type="number" id="jobBudget" placeholder="Budget (USD)" required>
+    
+    <select id="jobFreelancer">
+      <option value="">Assign to specific freelancer (optional)</option>
+    </select>
+
+    <button type="submit">Post Job</button>
+  </form>
+</main>
+
+<script>
+  // Auth guard
+  function authGuard(role) {
+    const data = localStorage.getItem("loggedInUser");
+    if (!data) { window.location.href = "register.html"; return null; }
+    const user = JSON.parse(data);
+    if (user.role !== role) { window.location.href = "register.html"; return null; }
+    return user;
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const client = authGuard("client");
+    if (!client) return;
+
+    document.getElementById("logoutBtn").onclick = () => {
+      localStorage.removeItem("loggedInUser");
+      window.location.href = "register.html";
+    };
+
+    const users = JSON.parse(localStorage.getItem("socialfix-users")) || [];
+    const freelancers = users.filter(u => u.role === "freelancer");
+
+    const freelancerSelect = document.getElementById("jobFreelancer");
+    freelancers.forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f.email;
+      opt.textContent = f.name;
+      freelancerSelect.appendChild(opt);
+    });
+
+    const jobForm = document.getElementById("jobForm");
+
+    jobForm.addEventListener("submit", e => {
+      e.preventDefault();
+
+      const title = document.getElementById("jobTitle").value.trim();
+      const desc = document.getElementById("jobDesc").value.trim();
+      const budget = document.getElementById("jobBudget").value.trim();
+      const freelancerEmail = freelancerSelect.value;
+
+      const jobs = JSON.parse(localStorage.getItem("socialfix-jobs")) || [];
+      const newJob = {
+        title, desc, budget, client: client.email, freelancer: freelancerEmail, date: new Date().toISOString()
+      };
+      jobs.push(newJob);
+      localStorage.setItem("socialfix-jobs", JSON.stringify(jobs));
+
+      // Notify freelancers
+      let notifications = JSON.parse(localStorage.getItem("socialfix-notifications")) || [];
+      if (freelancerEmail) {
+        // Notify specific freelancer
+        notifications.push({
+          freelancerEmail,
+          message: `You have been assigned a new job: ${title}`,
+          date: new Date().toISOString()
+        });
+      } else {
+        // Notify all freelancers
+        freelancers.forEach(f => {
+          notifications.push({
+            freelancerEmail: f.email,
+            message: `New job posted: ${title}`,
+            date: new Date().toISOString()
+          });
+        });
+      }
+      localStorage.setItem("socialfix-notifications", JSON.stringify(notifications));
+
+      alert("Job posted successfully!");
+      jobForm.reset();
+    });
+  });
+  
+  const backBtn = document.getElementById("backBtn");
+if (backBtn) {
+  backBtn.addEventListener("click", () => {
+    window.location.href = "client.html";
+  });
+}
+</script>
+
+</body>
+</html>

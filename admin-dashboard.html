@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard - Freelancer Approvals | SociaFix</title>
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
+body { background:#f4f4f4; padding:20px; }
+
+.navbar{
+  background:#203a43;
+  color:#fff;
+  padding:15px 30px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.navbar a{color:#fff;text-decoration:none;font-weight:bold;}
+
+.container{ max-width:900px; margin:auto; }
+
+h1{color:#203a43;margin-bottom:20px;}
+
+.freelancer-card{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom:15px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.freelancer-info{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+
+.freelancer-info img{
+  width:80px;
+  height:80px;
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid #ff6b6b;
+}
+
+button{
+  padding:6px 12px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+  font-weight:bold;
+  margin-left:5px;
+}
+
+button.approve{background:#55efc4;color:#000;}
+button.reject{background:#e74c3c;color:#fff;}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <strong>SociaFix Admin</strong>
+  <a href="#" id="logoutBtn">Logout</a>
+</div>
+
+<div class="container">
+  <h1>Freelancer Approvals</h1>
+  <div id="pendingFreelancers"></div>
+</div>
+
+<script>
+const USERS_KEY = 'sociafix_users';
+const ADMIN_SESSION = 'adminSession';
+
+// ===== Admin Authentication =====
+let admin = JSON.parse(localStorage.getItem(ADMIN_SESSION));
+if(!admin || admin.role !== 'admin'){
+  location.href = 'admin-login.html';
+}
+
+// ===== Logout =====
+document.getElementById('logoutBtn').onclick = () => {
+  localStorage.removeItem(ADMIN_SESSION);
+  location.href = 'admin-login.html';
+};
+
+// ===== Render Pending Freelancers =====
+function renderPendingFreelancers(){
+  const container = document.getElementById('pendingFreelancers');
+  container.innerHTML = '';
+
+  let users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  let pending = users.filter(u => u.role === 'freelancer' && u.verified === false);
+
+  if(pending.length === 0){
+    container.innerHTML = "<p>No freelancers pending verification.</p>";
+    return;
+  }
+
+  pending.forEach(f => {
+    const div = document.createElement('div');
+    div.className='freelancer-card';
+    div.innerHTML=`
+      <div class="freelancer-info">
+        <img src="${f.profilePic || 'img-freelancer.png'}">
+        <div>
+          <h3>${f.name}</h3>
+          <p>Email: ${f.email}</p>
+          <p>Bio: ${f.bio || 'N/A'}</p>
+          <p>Skills: ${f.skills || 'N/A'}</p>
+          <p>Languages: ${f.languages || 'N/A'}</p>
+        </div>
+      </div>
+      <div>
+        <button class="approve" onclick="approveFreelancer('${f.email}')">Approve</button>
+        <button class="reject" onclick="rejectFreelancer('${f.email}')">Reject</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// ===== Approve Freelancer =====
+function approveFreelancer(email){
+  let users = JSON.parse(localStorage.getItem(USERS_KEY))||[];
+  const idx = users.findIndex(u=>u.email===email && u.role==='freelancer');
+
+  if(idx !== -1){
+    users[idx].verified = true;
+
+    users[idx].notifications = users[idx].notifications || [];
+    users[idx].notifications.unshift({
+      message: '✅ Your profile has been approved by admin. You can now apply for jobs.',
+      date: new Date().toLocaleString()
+    });
+
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    alert(users[idx].name + ' has been verified successfully!');
+    renderPendingFreelancers();
+  }
+}
+
+// ===== Reject Freelancer =====
+function rejectFreelancer(email){
+  if(!confirm('Are you sure you want to reject this freelancer?')) return;
+
+  let users = JSON.parse(localStorage.getItem(USERS_KEY))||[];
+  const freelancer = users.find(u=>u.email===email && u.role==='freelancer');
+
+  if(freelancer){
+    users = users.filter(u=>!(u.email===email && u.role==='freelancer'));
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    alert(freelancer.name + ' has been rejected and removed.');
+    renderPendingFreelancers();
+  }
+}
+
+// ===== Initial Load =====
+renderPendingFreelancers();
+</script>
+
+</body>
+</html>

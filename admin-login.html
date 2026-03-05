@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login | SociaFix</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{
+  background:linear-gradient(to right,#0f2027,#203a43,#2c5364);
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.box{
+  background:#fff;
+  padding:30px;
+  width:350px;
+  border-radius:10px;
+  box-shadow:0 6px 20px rgba(0,0,0,.3);
+}
+.box h2{text-align:center;margin-bottom:20px;color:#203a43}
+input{
+  width:100%;
+  padding:10px;
+  margin-bottom:15px;
+  border:1px solid #ccc;
+  border-radius:5px;
+}
+button{
+  width:100%;
+  padding:10px;
+  background:#203a43;
+  color:#fff;
+  border:none;
+  border-radius:5px;
+  font-weight:bold;
+  cursor:pointer;
+}
+.error{color:red;text-align:center;margin-top:10px}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>Admin Login</h2>
+  <input id="email" type="email" placeholder="Admin Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p class="error" id="error"></p>
+</div>
+
+<script>
+// 🔹 CREATE DEFAULT ADMIN (RUNS ONCE)
+(function(){
+  const users = JSON.parse(localStorage.getItem("socialfix-users")) || [];
+  const adminExists = users.some(u=>u.role==="admin");
+
+  if(!adminExists){
+    users.push({
+      id: Date.now(),
+      name: "Super Admin",
+      email: "admin@sociafix.com",
+      password: "admin123",
+      role: "admin"
+    });
+    localStorage.setItem("socialfix-users",JSON.stringify(users));
+  }
+})();
+
+// 🔹 LOGIN FUNCTION
+function login(){
+  const emailInput = document.getElementById("email").value.trim();
+  const passwordInput = document.getElementById("password").value.trim();
+  const error = document.getElementById("error");
+
+  const users = JSON.parse(localStorage.getItem("socialfix-users")) || [];
+
+  const admin = users.find(u =>
+    u.email === emailInput &&
+    u.password === passwordInput &&
+    u.role === "admin"
+  );
+
+  if(!admin){
+    error.innerText = "Invalid admin credentials";
+    return;
+  }
+
+  localStorage.setItem("adminSession", JSON.stringify(admin));
+  window.location.href = "admin-dashboard.html";
+}
+</script>
+
+</body>
+</html>

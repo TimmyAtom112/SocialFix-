@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merchant Messages | SociaFix</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+body{display:flex;height:100vh;background:#f4f4f4;}
+
+/* Sidebar */
+.sidebar{
+  width:30%;
+  background:#fff;
+  border-right:1px solid #ddd;
+  overflow-y:auto;
+}
+.sidebar h2{
+  padding:15px;
+  background:#203a43;
+  color:#fff;
+}
+.convo{
+  padding:15px;
+  border-bottom:1px solid #eee;
+  cursor:pointer;
+}
+.convo:hover{background:#f1f1f1;}
+.convo.active{background:#d1e7dd;}
+
+/* Chat Area */
+.chat-area{
+  width:70%;
+  display:flex;
+  flex-direction:column;
+}
+.chat-header{
+  padding:15px;
+  background:#203a43;
+  color:#fff;
+}
+.messages{
+  flex:1;
+  padding:15px;
+  overflow-y:auto;
+  background:#f7f7f7;
+}
+.message{
+  margin-bottom:10px;
+  padding:10px;
+  border-radius:8px;
+  max-width:60%;
+  word-break:break-word;
+}
+.merchant{
+  background:#2196F3;
+  color:white;
+  align-self:flex-end;
+}
+.buyer{
+  background:#ddd;
+  align-self:flex-start;
+}
+
+/* Chat Input */
+.chat-input{
+  display:flex;
+  padding:10px;
+  background:#fff;
+}
+.chat-input input{
+  flex:1;
+  padding:10px;
+  border:1px solid #ccc;
+  border-radius:5px;
+}
+.chat-input button{
+  margin-left:10px;
+  padding:10px 15px;
+  background:#203a43;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>Buyer Conversations</h2>
+  <div id="conversationList"></div>
+</div>
+
+<div class="chat-area">
+  <div class="chat-header" id="chatHeader">Select a conversation</div>
+  <div class="messages" id="chatMessages"></div>
+  <div class="chat-input">
+    <input type="text" id="messageInput" placeholder="Type message...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+// ===== AUTH =====
+const SESSION_KEY = 'sociafix_user';
+let merchant = JSON.parse(localStorage.getItem(SESSION_KEY));
+
+if(!merchant || merchant.role !== 'merchant'){
+  location.href='register.html';
+}
+
+// ===== LOAD DATA =====
+let conversations = JSON.parse(localStorage.getItem("sf_conversations")) || [];
+let currentOrderId = null;
+
+const conversationList = document.getElementById("conversationList");
+const chatMessages = document.getElementById("chatMessages");
+const chatHeader = document.getElementById("chatHeader");
+
+// ===== LOAD CONVERSATIONS =====
+function loadConversations(){
+  if(!conversationList) return;
+
+  conversationList.innerHTML='';
+  const myConvos = conversations.filter(c => c.merchantEmail === merchant.email);
+
+  if(myConvos.length===0){
+    conversationList.innerHTML='<p style="padding:15px;">No conversations yet.</p>';
+    return;
+  }
+
+  myConvos.forEach(convo=>{
+    const div = document.createElement("div");
+    div.className="convo";
+    div.innerHTML = `
+      <strong>${convo.buyerName}</strong><br>
+      <small>Order #ORD-${convo.orderId}</small>
+    `;
+    div.onclick = ()=>openChat(convo.orderId, div);
+    conversationList.appendChild(div);
+  });
+}
+
+// ===== OPEN CHAT =====
+function openChat(orderId, element){
+  currentOrderId = orderId;
+
+  // Highlight active
+  document.querySelectorAll(".convo").forEach(c => c.classList.remove("active"));
+  if(element) element.classList.add("active");
+
+  const convo = conversations.find(c => c.orderId === currentOrderId);
+  if(!convo) return;
+
+  chatHeader.innerText = `Chat with ${convo.buyerName}`;
+  renderMessages(convo);
+}
+
+// ===== RENDER MESSAGES =====
+function renderMessages(convo){
+  if(!chatMessages) return;
+
+  chatMessages.innerHTML='';
+  convo.messages = convo.messages || [];
+
+  convo.messages.forEach(msg=>{
+    const div = document.createElement("div");
+    div.className="message " + (msg.sender==='merchant'?'merchant':'buyer');
+    div.innerHTML = `
+      ${msg.text}
+      <div style="font-size:11px;margin-top:4px;opacity:0.7;">${msg.time}</div>
+    `;
+    chatMessages.appendChild(div);
+  });
+
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// ===== SEND MESSAGE =====
+function sendMessage(){
+  const input = document.getElementById("messageInput");
+  if(!input || !currentOrderId) return;
+
+  const text = input.value.trim();
+  if(!text) return;
+
+  const convoIndex = conversations.findIndex(c => c.orderId === currentOrderId);
+  if(convoIndex===-1) return;
+
+  const messageObj = {
+    sender:'merchant',
+    text:text,
+    time:new Date().toLocaleTimeString()
+  };
+
+  // Add message
+  conversations[convoIndex].messages = conversations[convoIndex].messages || [];
+  conversations[convoIndex].messages.push(messageObj);
+
+  // Sync to buyerOrders and merchantOrders
+  let buyerOrders = JSON.parse(localStorage.getItem('buyerOrders')) || [];
+  let merchantOrders = JSON.parse(localStorage.getItem('merchantOrders')) || [];
+
+  buyerOrders.forEach(o=>{
+    if(o.buyerEmail === conversations[convoIndex].buyerEmail && o.id===currentOrderId){
+      o.chat = conversations[convoIndex].messages;
+    }
+  });
+  merchantOrders.forEach(o=>{
+    if(o.merchantEmail === merchant.email && o.id===currentOrderId){
+      o.chat = conversations[convoIndex].messages;
+    }
+  });
+
+  localStorage.setItem('buyerOrders', JSON.stringify(buyerOrders));
+  localStorage.setItem('merchantOrders', JSON.stringify(merchantOrders));
+  localStorage.setItem('sf_conversations', JSON.stringify(conversations));
+
+  input.value='';
+  renderMessages(conversations[convoIndex]);
+}
+
+// ===== AUTO REFRESH =====
+setInterval(()=>{
+  conversations = JSON.parse(localStorage.getItem("sf_conversations")) || [];
+  if(currentOrderId){
+    const convo = conversations.find(c=>c.orderId===currentOrderId);
+    if(convo) renderMessages(convo);
+  }
+  loadConversations();
+},1000);
+
+// ===== INIT =====
+loadConversations();
+</script>
+</body>
+</html>

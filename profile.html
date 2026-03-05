@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freelancer Profile | SociaFix</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
+body { background:#f4f4f4; }
+
+/* Navbar */
+.navbar { display:flex; justify-content:space-between; padding:15px 30px; background:#203a43; color:white; }
+.navbar a { color:white; text-decoration:none; margin-left:15px; font-weight:bold; }
+
+/* Container */
+.container { max-width:1000px; margin:40px auto; padding:20px; }
+
+/* Back button */
+#backToDashboardBtn { padding:8px 15px; background:#555; color:white; border:none; border-radius:5px; cursor:pointer; margin-bottom:20px; }
+
+/* Profile */
+.profile-container { background:white; padding:20px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin-bottom:30px; }
+.profile-header { display:flex; gap:20px; align-items:center; margin-bottom:20px; }
+.profile-header img { width:100px; height:100px; border-radius:50%; object-fit:cover; cursor:pointer; border:2px solid #ff6b6b; }
+.profile-header h2 { color:#203a43; display:flex; align-items:center; gap:10px; }
+.profile-header p { color:#555; }
+
+.badge { padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:bold; display:inline-block; }
+.verified { background:#4caf50; color:white; }
+.pending { background:orange; color:white; }
+.rejected { background:red; color:white; }
+.unverified { background:#999; color:white; }
+
+/* Tags */
+.tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:5px; }
+.tags span { background:#e0e0e0; padding:6px 12px; border-radius:20px; font-size:0.9rem; }
+
+/* Portfolio Grid */
+.portfolio-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px; }
+.project-card { border:1px solid #ddd; padding:10px; border-radius:8px; position:relative; }
+.project-card img { width:100%; height:120px; object-fit:cover; border-radius:5px; }
+.remove-project { position:absolute; top:5px; right:5px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; }
+
+/* Notifications */
+.notifications { background:#fff; padding:15px; border-radius:10px; margin-top:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+.notifications div { border-bottom:1px solid #ddd; padding:5px 0; }
+
+/* Buttons */
+button { padding:10px 15px; border:none; background:#ff6b6b; color:white; border-radius:5px; cursor:pointer; margin-top:10px; }
+
+/* Modal */
+.modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; }
+.modal-content { background:white; padding:20px; border-radius:10px; width:90%; max-width:500px; position:relative; max-height:90vh; overflow-y:auto; }
+.modal-content h3 { margin-bottom:15px; color:#203a43; }
+.modal-content input, .modal-content textarea { width:100%; padding:10px; margin-bottom:10px; border:1px solid #ccc; border-radius:5px; }
+.modal-content button { width:100%; margin-bottom:10px; }
+.close-btn { position:absolute; top:10px; right:10px; background:#ff6b6b; border:none; color:white; font-weight:bold; padding:5px 10px; cursor:pointer; border-radius:5px; }
+
+/* Verification Form */
+.verification-box { border:1px dashed #ccc; padding:15px; margin-top:20px; border-radius:10px; }
+.verification-box input { width:100%; padding:10px; margin-bottom:10px; border:1px solid #ccc; border-radius:5px; }
+.verification-box button { width:100%; padding:10px; background:#ff6b6b; color:white; border:none; border-radius:5px; cursor:pointer; }
+
+/* Responsive */
+@media(max-width:600px){
+  .profile-header { flex-direction:column; text-align:center; }
+  .profile-header img { margin-bottom:10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<div class="navbar">
+  <strong>SociaFix</strong>
+  <div>
+    <a href="#" id="logoutBtn">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Back button -->
+  <button id="backToDashboardBtn"> Back to Dashboard</button>
+
+  <!-- PROFILE -->
+  <div class="profile-container">
+    <div class="profile-header">
+      <img id="profileImage" src="img-freelancer.png" alt="Profile Image" title="Click to edit profile">
+      <div>
+        <h2 id="profileName">Freelancer Name <span id="verificationBadge" class="badge unverified">Unverified</span></h2>
+        <p>Email: <span id="profileEmail"></span></p>
+        <p>Role: <span id="profileRole"></span></p>
+        <p>Location: <span id="profileLocation">Not set</span></p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Bio</h3>
+      <p id="bio">No description yet.</p>
+    </div>
+
+    <div class="section">
+      <h3>Skills</h3>
+      <div id="skillsList" class="tags"></div>
+      <input type="text" id="newSkill" placeholder="Add skill">
+      <button id="addSkillBtn">Add Skill</button>
+    </div>
+
+    <div class="section">
+      <h3>Languages</h3>
+      <div id="languagesList" class="tags"></div>
+      <input type="text" id="newLanguage" placeholder="Add language">
+      <button id="addLanguageBtn">Add Language</button>
+    </div>
+
+    <div class="section">
+      <h3>Portfolio</h3>
+      <div class="portfolio-grid" id="portfolioGrid"></div>
+      <input type="text" id="projectTitle" placeholder="Project Title">
+      <input type="text" id="projectDesc" placeholder="Project Description">
+      <input type="text" id="projectImage" placeholder="Project Image URL">
+      <button id="addProjectBtn">Add Project</button>
+    </div>
+
+    <!-- VERIFICATION -->
+    <div class="verification-box">
+      <h3>Profile Verification</h3>
+      <input type="text" id="legalName" placeholder="Legal Full Name" required>
+      <input type="text" id="idDocument" placeholder="ID Document URL" required>
+      <button id="submitVerification">Submit Verification</button>
+    </div>
+
+    <div class="notifications">
+      <h3>Notifications</h3>
+      <div id="notificationsList"><p>No notifications yet.</p></div>
+    </div>
+
+    <button id="editProfileBtn">Edit Profile</button>
+  </div>
+
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" id="closeModal">X</button>
+    <h3>Edit Profile</h3>
+    <input type="text" id="editName" placeholder="Full Name">
+    <input type="email" id="editEmail" placeholder="Email">
+    <textarea id="editBio" placeholder="Bio"></textarea>
+    <input type="text" id="editLocation" placeholder="Location">
+    <input type="text" id="editProfilePic" placeholder="Profile Picture URL">
+    <button id="saveProfile">Save Changes</button>
+  </div>
+</div>
+
+<script>
+// ---------- SAFELY GET USER ----------
+
+let user = null;
+let isOwner = false;
+
+const urlParams = new URLSearchParams(window.location.search);
+const freelancerEmail = urlParams.get("email"); // if client is viewing another freelancer
+const users = JSON.parse(localStorage.getItem("socialfix_users")) || [];
+
+if(freelancerEmail){
+    // CLIENT viewing freelancer profile
+    user = users.find(u => u.email.toLowerCase() === freelancerEmail.toLowerCase() && u.role === "freelancer");
+    if(!user){
+        alert("Freelancer not found!");
+        window.location.href = "browse-freelancers.html";
+    }
+} else {
+    // FREELANCER viewing own profile
+    const data = localStorage.getItem("loggedInUser");
+    if(!data){
+        alert("Please login first!");
+        window.location.href = "register.html";
+    }
+    user = JSON.parse(data);
+    if(user.role !== "freelancer"){
+        alert("Only freelancers can access this page!");
+        window.location.href = "register.html";
+    }
+    isOwner = true;
+}
+
+// ---------- BACK BUTTON ----------
+document.getElementById("backToDashboardBtn").onclick = () => {
+    if(isOwner) window.location.href = "freelancer.html";
+    else window.location.href = "browse-freelancers.html";
+};
+
+// ---------- LOGOUT ----------
+document.getElementById("logoutBtn").onclick = () => {
+    localStorage.removeItem("loggedInUser");
+    window.location.href = "register.html";
+};
+
+// ---------- LOAD PROFILE ----------
+function loadProfile(){
+    if(!user) return;
+
+    // Name + verification badge
+    document.getElementById("profileName").innerHTML = `${user.name} <span id="verificationBadge" class="badge unverified">Unverified</span>`;
+
+    document.getElementById("profileEmail").innerText = user.email || "Not set";
+    document.getElementById("profileRole").innerText = (user.role || "freelancer").charAt(0).toUpperCase() + (user.role || "freelancer").slice(1);
+    document.getElementById("bio").innerText = user.bio || "No description yet.";
+    document.getElementById("profileLocation").innerText = user.location || "Not set";
+
+    if(user.profilePic) document.getElementById("profileImage").src = user.profilePic;
+
+    renderSkills();
+    renderLanguages();
+    renderPortfolio();
+    renderNotifications();
+
+    // Verification badge
+    const verificationBadge = document.getElementById("verificationBadge");
+    verificationBadge.className = "badge";
+    switch(user.verificationStatus){
+        case "verified": verificationBadge.classList.add("verified"); verificationBadge.innerText = "Verified"; break;
+        case "pending": verificationBadge.classList.add("pending"); verificationBadge.innerText = "Pending"; break;
+        case "rejected": verificationBadge.classList.add("rejected"); verificationBadge.innerText = "Rejected"; break;
+        default: verificationBadge.classList.add("unverified"); verificationBadge.innerText = "Unverified";
+    }
+
+    // Hide editing/verification if viewing as client
+    if(!isOwner){
+        document.getElementById("editProfileBtn").style.display = "none";
+        document.querySelector(".verification-box").style.display = "none";
+        ["newSkill","addSkillBtn","newLanguage","addLanguageBtn","projectTitle","projectDesc","projectImage","addProjectBtn"].forEach(id=>{
+            document.getElementById(id).style.display = "none";
+        });
+    }
+}
+
+// ---------- SKILLS ----------
+function renderSkills(){
+    const skillsList = document.getElementById("skillsList");
+    skillsList.innerHTML = "";
+    user.skills = user.skills || [];
+    user.skills.forEach(skill=>{
+        const span = document.createElement("span");
+        span.innerText = skill;
+        skillsList.appendChild(span);
+    });
+}
+document.getElementById("addSkillBtn")?.addEventListener("click", ()=>{
+    const val = document.getElementById("newSkill").value.trim();
+    if(!val) return;
+    user.skills.push(val);
+    document.getElementById("newSkill").value = "";
+    saveUserData();
+    renderSkills();
+});
+
+// ---------- LANGUAGES ----------
+function renderLanguages(){
+    const langList = document.getElementById("languagesList");
+    langList.innerHTML = "";
+    user.languages = user.languages || [];
+    user.languages.forEach(lang=>{
+        const span = document.createElement("span");
+        span.innerText = lang;
+        langList.appendChild(span);
+    });
+}
+document.getElementById("addLanguageBtn")?.addEventListener("click", ()=>{
+    const val = document.getElementById("newLanguage").value.trim();
+    if(!val) return;
+    user.languages.push(val);
+    document.getElementById("newLanguage").value = "";
+    saveUserData();
+    renderLanguages();
+});
+
+// ---------- PORTFOLIO ----------
+function renderPortfolio(){
+    const grid = document.getElementById("portfolioGrid");
+    grid.innerHTML = "";
+    user.portfolio = user.portfolio || [];
+    user.portfolio.forEach((p,i)=>{
+        const card = document.createElement("div");
+        card.className="project-card";
+        card.innerHTML = `
+            ${isOwner ? `<button class="remove-project" onclick="removeProject(${i})">×</button>` : ""}
+            <img src="${p.image}" alt="${p.title}">
+            <h4>${p.title}</h4>
+            <p>${p.desc}</p>
+        `;
+        grid.appendChild(card);
+    });
+}
+document.getElementById("addProjectBtn")?.addEventListener("click", ()=>{
+    const title = document.getElementById("projectTitle").value.trim();
+    const desc = document.getElementById("projectDesc").value.trim();
+    const image = document.getElementById("projectImage").value.trim();
+    if(!title || !desc || !image) return alert("Fill all project fields");
+    user.portfolio.push({title,desc,image});
+    document.getElementById("projectTitle").value = "";
+    document.getElementById("projectDesc").value = "";
+    document.getElementById("projectImage").value = "";
+    saveUserData();
+    renderPortfolio();
+});
+function removeProject(i){
+    user.portfolio.splice(i,1);
+    saveUserData();
+    renderPortfolio();
+}
+
+// ---------- NOTIFICATIONS ----------
+function renderNotifications(){
+    const list = document.getElementById("notificationsList");
+    list.innerHTML = "";
+    user.notifications = user.notifications || [];
+    if(user.notifications.length === 0){
+        list.innerHTML = "<p>No notifications yet.</p>";
+        return;
+    }
+    user.notifications.forEach((n,i)=>{
+        const div = document.createElement("div");
+        div.style.display = "flex";
+        div.style.justifyContent = "space-between";
+        div.style.alignItems = "center";
+        div.style.marginBottom = "5px";
+
+        const msg = document.createElement("span");
+        msg.innerText = `${n.message} (${n.date})`;
+
+        const delBtn = document.createElement("button");
+        delBtn.innerText = "Delete";
+        delBtn.style.background = "red";
+        delBtn.style.color = "white";
+        delBtn.style.border = "none";
+        delBtn.style.borderRadius = "5px";
+        delBtn.style.padding = "2px 6px";
+        delBtn.style.cursor = "pointer";
+        delBtn.onclick = ()=>{
+            if(confirm("Delete this notification?")){
+                user.notifications.splice(i,1);
+                saveUserData();
+                renderNotifications();
+            }
+        }
+
+        div.appendChild(msg);
+        div.appendChild(delBtn);
+        list.appendChild(div);
+    });
+}
+
+// ---------- EDIT PROFILE MODAL ----------
+const editModal = document.getElementById("editModal");
+const editProfileBtn = document.getElementById("editProfileBtn");
+const closeModal = document.getElementById("closeModal");
+
+editProfileBtn?.addEventListener("click", ()=>{
+    editModal.style.display = "flex";
+    document.getElementById("editName").value = user.name;
+    document.getElementById("editEmail").value = user.email;
+    document.getElementById("editBio").value = user.bio || "";
+    document.getElementById("editLocation").value = user.location || "";
+    document.getElementById("editProfilePic").value = user.profilePic || "";
+});
+closeModal?.addEventListener("click", ()=> editModal.style.display = "none");
+window.onclick = e => { if(e.target==editModal) editModal.style.display="none"; }
+
+document.getElementById("saveProfile")?.addEventListener("click", ()=>{
+    user.name = document.getElementById("editName").value.trim();
+    user.email = document.getElementById("editEmail").value.trim();
+    user.bio = document.getElementById("editBio").value.trim();
+    user.location = document.getElementById("editLocation").value.trim();
+    user.profilePic = document.getElementById("editProfilePic").value.trim();
+    saveUserData();
+    editModal.style.display = "none";
+    loadProfile();
+    alert("Profile updated successfully!");
+});
+
+// ---------- VERIFICATION ----------
+document.getElementById("submitVerification")?.addEventListener("click", ()=>{
+    const legalName = document.getElementById("legalName").value.trim();
+    const idDoc = document.getElementById("idDocument").value.trim();
+    if(!legalName || !idDoc){ alert("Please fill all verification fields"); return; }
+    user.verificationStatus = "pending";
+    saveUserData();
+    loadProfile();
+
+    let requests = JSON.parse(localStorage.getItem("verificationRequests")) || [];
+    const existingIndex = requests.findIndex(r => r.email === user.email);
+    const requestObj = {
+        name: legalName,
+        email: user.email,
+        idDocument: idDoc,
+        status: "pending",
+        submittedAt: new Date().toLocaleString()
+    };
+    if(existingIndex !== -1) requests[existingIndex] = requestObj;
+    else requests.push(requestObj);
+    localStorage.setItem("verificationRequests", JSON.stringify(requests));
+
+    alert("Verification submitted! Status: Pending");
+});
+
+// ---------- SAVE USER DATA ----------
+function saveUserData(){
+    const users = JSON.parse(localStorage.getItem("socialfix_users")) || [];
+    const index = users.findIndex(u => u.email === user.email && u.role === user.role);
+    if(index !== -1) users[index] = user;
+    else users.push(user);
+    localStorage.setItem("socialfix_users", JSON.stringify(users));
+    if(isOwner) localStorage.setItem("loggedInUser", JSON.stringify(user));
+}
+
+// ---------- INITIAL LOAD ----------
+if(user) loadProfile();
+</script>
+</body>
+</html>
