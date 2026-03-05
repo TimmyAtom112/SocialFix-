@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Dashboard | SociaFix</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+body{background:#f4f4f4;}
+
+.navbar{
+  background:#203a43;color:#fff;padding:15px 30px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.navbar a{color:#fff;text-decoration:none;font-weight:bold;}
+
+.container{max-width:1000px;margin:30px auto;padding:20px;}
+
+.profile-card{background:#fff;padding:20px;border-radius:10px;margin-bottom:20px;box-shadow:0 3px 10px rgba(0,0,0,.1);}
+.profile-card img{width:100px;height:100px;border-radius:50%;object-fit:cover;border:2px solid #ff6b6b;}
+button{padding:6px 12px;border:none;border-radius:5px;background:#ff6b6b;color:#fff;cursor:pointer;font-weight:bold;}
+button:disabled{background:#ccc;cursor:not-allowed;}
+.job-card,.freelancer-card,.gig-card{border:1px solid #ddd;padding:12px;border-radius:8px;margin-bottom:10px;}
+.freelancer-card{display:flex;gap:12px;align-items:center;}
+.freelancer-card img{width:70px;height:70px;border-radius:50%;border:2px solid #ff6b6b;object-fit:cover;}
+.rating{color:#f1c40f;font-weight:bold;}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center;z-index:100;}
+.modal-content{background:#fff;padding:20px;border-radius:10px;width:95%;max-width:400px;}
+.modal-content input,textarea,select{width:100%;padding:10px;margin:8px 0;border-radius:5px;border:1px solid #ccc;}
+.star{font-size:24px;cursor:pointer;color:#ccc;}
+.star.selected{color:#ff6b6b;}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <strong>SociaFix</strong>
+  <a href="#" id="logoutBtn">Logout</a>
+</div>
+
+<div class="container">
+
+  <!-- Client Profile -->
+  <div class="profile-card">
+    <img id="clientPic" src="img-client.png">
+    <div>
+      <h2 id="clientName"></h2>
+      <p id="clientEmail"></p>
+      <p><b>Role:</b> Client</p>
+      <button onclick="openEditProfile()">Edit Profile</button>
+    </div>
+  </div>
+
+  <!-- My Jobs -->
+  <div class="profile-card">
+    <h3>My Jobs</h3> 
+    <button onclick="openJobModal()">+ Post Job</button>
+    <br><br>
+    <div id="jobsList"></div>
+  </div>
+
+  <!-- Browse Freelancers -->
+  <div class="profile-card">
+    <h3>Freelancers</h3>
+    <div id="freelancersList"></div>
+  </div>
+
+</div>
+
+<!-- ===== Modals ===== -->
+
+<!-- Edit Profile -->
+<div class="modal" id="profileModal">
+  <div class="modal-content">
+    <h3>Edit Profile</h3>
+    <input type="file" id="editPicFile" accept="image/*">
+    <input id="editName" placeholder="Full Name">
+    <button onclick="saveProfile()">Save</button>
+  </div>
+</div>
+
+<!-- Post Job -->
+<div class="modal" id="jobModal">
+  <div class="modal-content">
+    <h3>Post Job</h3>
+    <input id="jobTitle" placeholder="Job Title">
+    <textarea id="jobDesc" placeholder="Job Description"></textarea>
+    <button onclick="saveJob()">Post</button>
+  </div>
+</div>
+
+<!-- Freelancer Profile Modal -->
+<div class="modal" id="freelancerModal">
+  <div class="modal-content">
+    <h3 id="freelancerNameModal"></h3>
+    <img id="freelancerPicModal" src="img-freelancer.png" style="width:100px;height:100px;border-radius:50%;border:2px solid #ff6b6b;">
+    <p id="freelancerBioModal"></p>
+    <p><b>Skills:</b> <span id="freelancerSkillsModal"></span></p>
+    <p><b>Languages:</b> <span id="freelancerLangModal"></span></p>
+    <p class="rating" id="freelancerRatingModal">⭐ 0 / 5</p>
+    <p><b>Portfolio:</b></p>
+    <div id="freelancerPortfolioModal" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    <p><b>Gigs:</b></p>
+    <div id="freelancerGigsModal"></div>
+    <button id="hireBtn">Hire</button>
+    <button id="rateBtn">Rate</button>
+    <button onclick="closeFreelancerModal()">Close</button>
+  </div>
+</div>
+
+<!-- Rating Modal -->
+<div class="modal" id="ratingModal">
+  <div class="modal-content">
+    <h3>Rate Freelancer</h3>
+    <select id="ratingStars">
+      <option value="5">⭐⭐⭐⭐⭐</option>
+      <option value="4">⭐⭐⭐⭐</option>
+      <option value="3">⭐⭐⭐</option>
+      <option value="2">⭐⭐</option>
+      <option value="1">⭐</option>
+    </select>
+    <textarea id="ratingComment" placeholder="Write review"></textarea>
+    <button onclick="submitRating()">Submit</button>
+    <button onclick="closeRatingModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ===== Local Storage Keys =====
+const USERS_KEY='sociafix_users';
+const SESSION_KEY='sociafix_user';
+
+// ===== Load Session =====
+let user=JSON.parse(localStorage.getItem(SESSION_KEY));
+if(!user||user.role!=='client') location.href='register.html';
+
+const clientName=document.getElementById('clientName');
+const clientEmail=document.getElementById('clientEmail');
+const clientPic=document.getElementById('clientPic');
+const jobsList=document.getElementById('jobsList');
+const freelancersList=document.getElementById('freelancersList');
+
+let selectedFreelancer=null;
+
+// ===== Sync =====
+function syncClient(){
+  let users=JSON.parse(localStorage.getItem(USERS_KEY))||[];
+  const idx=users.findIndex(u=>u.email===user.email);
+  if(idx!==-1) users[idx]=user;
+  localStorage.setItem(USERS_KEY,JSON.stringify(users));
+  localStorage.setItem(SESSION_KEY,JSON.stringify(user));
+}
+
+// ===== Load Client Profile =====
+function loadProfile(){
+  clientName.innerText=user.name;
+  clientEmail.innerText=user.email;
+  if(user.profilePic) clientPic.src=user.profilePic;
+  renderJobs();
+  renderFreelancers();
+}
+
+// ===== Jobs =====
+function renderJobs(){
+  jobsList.innerHTML='';
+  user.jobs=user.jobs||[];
+  if(!user.jobs.length){ jobsList.innerHTML="<p>No jobs posted.</p>"; return; }
+  user.jobs.forEach((job,i)=>{
+    const div=document.createElement('div');
+    div.className='job-card';
+    let applied='';
+    if(job.freelancers && job.freelancers.length){
+      applied='<p><b>Freelancers Applied:</b></p>'+job.freelancers.map(f=>`<p>${f.name} - ${f.status}</p>`).join('');
+    }
+    div.innerHTML=`<h4>${job.title}</h4><p>${job.desc}</p>${applied}<button onclick="deleteJob(${i})">Delete</button>`;
+    jobsList.appendChild(div);
+  });
+}
+function openJobModal(){ jobModal.style.display='flex'; }
+function saveJob(){
+  const title=jobTitle.value.trim();
+  const desc=jobDesc.value.trim();
+  if(!title||!desc) return alert('Fill all fields');
+  user.jobs=user.jobs||[];
+  user.jobs.push({title,desc,freelancers:[]});
+  syncClient(); jobModal.style.display='none'; renderJobs();
+}
+function deleteJob(i){ if(confirm('Delete job?')){ user.jobs.splice(i,1); syncClient(); renderJobs(); }}
+
+// ===== Profile Edit =====
+function openEditProfile(){
+  profileModal.style.display='flex';
+  editName.value=user.name;
+}
+function saveProfile(){
+  user.name=editName.value.trim();
+  const file=editPicFile.files[0];
+  if(file){
+    const reader=new FileReader();
+    reader.onload=()=>{ user.profilePic=reader.result; syncClient(); profileModal.style.display='none'; loadProfile(); };
+    reader.readAsDataURL(file);
+  }else{ syncClient(); profileModal.style.display='none'; loadProfile(); }
+}
+
+// ===== Freelancers =====
+function renderFreelancers(){
+  freelancersList.innerHTML='';
+  const usersLS=JSON.parse(localStorage.getItem(USERS_KEY))||[];
+  const freelancers=usersLS.filter(f=>f.role==='freelancer' && f.verified);
+  if(!freelancers.length){ freelancersList.innerHTML="<p>No freelancers available.</p>"; return; }
+  freelancers.forEach(f=>{
+    const div=document.createElement('div');
+    div.className='freelancer-card';
+    div.innerHTML=`<img src="${f.profilePic||'img-freelancer.png'}">
+      <div style="flex:1">
+        <h4>${f.name}</h4>
+        <p>${f.bio||'No bio yet'}</p>
+        <p class="rating">⭐ ${f.avgRating||0} / 5</p>
+      </div>
+      <button onclick="openFreelancerModal('${f.email}')">View Profile</button>`;
+    freelancersList.appendChild(div);
+  });
+}
+
+// ===== Freelancer Modal =====
+const freelancerNameModal=document.getElementById('freelancerNameModal');
+const freelancerPicModal=document.getElementById('freelancerPicModal');
+const freelancerBioModal=document.getElementById('freelancerBioModal');
+const freelancerSkillsModal=document.getElementById('freelancerSkillsModal');
+const freelancerLangModal=document.getElementById('freelancerLangModal');
+const freelancerRatingModal=document.getElementById('freelancerRatingModal');
+const freelancerPortfolioModal=document.getElementById('freelancerPortfolioModal');
+const freelancerGigsModal=document.getElementById('freelancerGigsModal');
+const freelancerModal=document.getElementById('freelancerModal');
+const hireBtn=document.getElementById('hireBtn');
+const rateBtn=document.getElementById('rateBtn');
+
+function openFreelancerModal(email){
+  const usersLS=JSON.parse(localStorage.getItem(USERS_KEY))||[];
+  const f=usersLS.find(u=>u.email===email);
+  if(!f) return;
+  selectedFreelancer=email;
+  freelancerNameModal.innerText=f.name;
+  freelancerPicModal.src=f.profilePic||'img-freelancer.png';
+  freelancerBioModal.innerText=f.bio||'No bio yet';
+  freelancerSkillsModal.innerText=f.skills||'None';
+  freelancerLangModal.innerText=f.languages||'None';
+  freelancerRatingModal.innerText=`⭐ ${f.avgRating||0} / 5`;
+
+  // Portfolio
+  freelancerPortfolioModal.innerHTML='';
+  (f.portfolio||[]).forEach(p=>{
+    const img=document.createElement('img');
+    img.src=p.image;
+    img.style.width='80px'; img.style.height='80px'; img.style.borderRadius='5px'; img.style.objectFit='cover';
+    freelancerPortfolioModal.appendChild(img);
+  });
+
+  // Gigs
+  freelancerGigsModal.innerHTML='';
+  (f.gigs||[]).forEach(g=>{
+    const div=document.createElement('div');
+    div.className='gig-card';
+    div.innerHTML=`<p><b>${g.title}</b></p><p>${g.desc}</p>`;
+    freelancerGigsModal.appendChild(div);
+  });
+
+  // Hire
+  hireBtn.onclick = () => {
+  // Ask which job the client is hiring the freelancer for
+  const clientJobs = user.jobs || [];
+  if(clientJobs.length === 0) return alert("You have no posted jobs to hire for.");
+
+  let jobTitle = prompt("Enter the job title you want to hire this freelancer for:");
+  jobTitle = jobTitle?.trim();
+  if(!jobTitle) return alert("Job title is required.");
+  
+  const clientJob = clientJobs.find(j => j.title === jobTitle);
+  if(!clientJob) return alert("You don't have a job with that title.");
+
+  // Check if freelancer already hired for this job
+  clientJob.freelancers = clientJob.freelancers || [];
+  if(clientJob.freelancers.some(fx => fx.email === selectedFreelancer && fx.status === 'hired'))
+      return alert('You already hired this freelancer for this job.');
+
+  // Add to client job
+  clientJob.freelancers.push({
+    email: selectedFreelancer,
+    name: freelancerNameModal.innerText,
+    status: 'hired',
+    date: new Date().toLocaleString()
+  });
+
+  // Add to freelancer's hiredBy
+  let usersLS = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  const freelancer = usersLS.find(f => f.email === selectedFreelancer);
+  if(!freelancer.hiredBy) freelancer.hiredBy = [];
+  freelancer.hiredBy.push({
+    client: user.email,
+    clientName: user.name,
+    jobTitle: clientJob.title,
+    status: 'in-progress',
+    date: new Date().toLocaleString()
+  });
+
+  // Save changes
+  usersLS = usersLS.map(u => u.email === freelancer.email ? freelancer : u);
+  localStorage.setItem(USERS_KEY, JSON.stringify(usersLS));
+  syncClient();
+
+  alert(`Freelancer hired for job "${clientJob.title}" successfully!`);
+  freelancerModal.style.display = 'none';
+  renderFreelancers();
+};
+
+  // Rate
+  rateBtn.onclick=()=>{
+    if(!f.hiredBy || !f.hiredBy.some(h=>h.client===user.email)) return alert('You can only rate a freelancer you hired.');
+    openRatingModal();
+  };
+
+  freelancerModal.style.display='flex';
+}
+function closeFreelancerModal(){ freelancerModal.style.display='none'; }
+
+// ===== Rating =====
+const ratingModal=document.getElementById('ratingModal');
+const ratingStars=document.getElementById('ratingStars');
+const ratingComment=document.getElementById('ratingComment');
+
+function openRatingModal(){ ratingModal.style.display='flex'; }
+function closeRatingModal(){ ratingModal.style.display='none'; }
+function submitRating(){
+  const stars=parseInt(ratingStars.value);
+  const comment=ratingComment.value.trim();
+  let usersLS=JSON.parse(localStorage.getItem(USERS_KEY))||[];
+  const f=usersLS.find(u=>u.email===selectedFreelancer);
+  if(!f) return;
+
+  f.ratings=f.ratings||[];
+  if(f.ratings.some(r=>r.user===user.email)) return alert('You already rated this freelancer');
+
+  f.ratings.push({user:user.email,stars,comment,date:new Date().toLocaleString()});
+  f.avgRating=(f.ratings.reduce((a,b)=>a+b.stars,0)/f.ratings.length).toFixed(1);
+
+  usersLS=usersLS.map(u=>u.email===f.email?f:u);
+  localStorage.setItem(USERS_KEY,JSON.stringify(usersLS));
+  alert('Rating submitted!');
+  closeRatingModal();
+  renderFreelancers();
+}
+
+// ===== Logout =====
+document.getElementById('logoutBtn').onclick=()=>{
+  localStorage.removeItem(SESSION_KEY);
+  location.href='register.html';
+}
+
+// ===== Initial Load =====
+loadProfile();
+</script>
+</body>
+</html>
