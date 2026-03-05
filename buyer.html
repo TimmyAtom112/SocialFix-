@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buyer Dashboard | SociaFix</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+body{background:#f4f4f4;}
+
+/* Navbar */
+.navbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:#203a43;
+  color:white;
+  padding:15px 30px;
+}
+.navbar a{
+  color:white;
+  text-decoration:none;
+  margin-left:20px;
+  font-weight:bold;
+}
+.navbar a:hover{color:#ff6b6b;}
+
+/* Container */
+.container{
+  max-width:1000px;
+  margin:40px auto;
+  padding:20px;
+}
+
+/* Welcome */
+.welcome-card{
+  background:white;
+  padding:25px;
+  border-radius:8px;
+  margin-bottom:30px;
+}
+.welcome-card h1{
+  color:#203a43;
+  margin-bottom:10px;
+}
+
+/* Products */
+.products h2{
+  color:#203a43;
+  margin-bottom:15px;
+}
+.product-card{
+  background:white;
+  padding:15px;
+  border-radius:8px;
+  margin-bottom:15px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+.product-info h3{
+  color:#203a43;
+  margin-bottom:5px;
+}
+.product-info p{
+  margin-bottom:5px;
+  color:#555;
+}
+.product-actions input{
+  width:60px;
+  padding:5px;
+  margin-right:10px;
+  border-radius:5px;
+  border:1px solid #ccc;
+}
+.product-actions button{
+  padding:6px 12px;
+  background:#ff6b6b;
+  color:white;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+.product-actions button:hover{
+  background:#ff4c4c;
+}
+
+/* Orders Table */
+.orders h2{
+  color:#203a43;
+  margin-bottom:15px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+table th, table td{
+  padding:12px;
+  border:1px solid #ddd;
+  text-align:left;
+}
+table th{
+  background:#203a43;
+  color:white;
+}
+.order-status{
+  padding:5px 10px;
+  border-radius:5px;
+  font-weight:bold;
+}
+.pending{background:#ffeaa7;color:#000;}
+.completed{background:#55efc4;color:#000;}
+.canceled{background:#e74c3c;color:white;}
+.delete-btn{
+  padding:6px 10px;
+  background:#e74c3c;
+  color:white;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+.delete-btn:hover{
+  background:#c0392b;
+}
+.action-btn{
+  padding:6px 10px;
+  background:#2196F3;
+  color:white;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+  text-decoration:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="navbar">
+  <strong>SociaFix</strong>
+  <div>
+    <a href="buyer.html">Dashboard</a>
+    <a href="buyer-messages.html">Messages</a>
+    <a href="#" id="logoutBtn">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Welcome -->
+  <div class="welcome-card">
+    <h1>Welcome, <span id="buyerName">Buyer</span> 👋</h1>
+    <p>Browse merchant products and place orders easily.</p>
+  </div>
+
+  <!-- Products -->
+  <div class="products">
+    <h2>Available Products</h2>
+    <div id="productsList"></div>
+  </div>
+
+  <!-- Orders -->
+  <div class="orders">
+    <h2>My Orders</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Product</th>
+          <th>Merchant</th>
+          <th>Amount ($)</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="buyerOrdersTable"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ===== AUTH =====
+const SESSION_KEY = 'sociafix_user';
+const buyer = JSON.parse(localStorage.getItem(SESSION_KEY));
+
+if(!buyer || buyer.role !== 'buyer'){
+  location.href = 'register.html';
+}
+
+document.getElementById('buyerName').innerText = buyer.name;
+
+// ===== LOGOUT =====
+document.getElementById('logoutBtn').onclick = () => {
+  localStorage.removeItem(SESSION_KEY);
+  location.href = 'register.html';
+};
+
+// ===== LOAD DATA =====
+let merchantProducts = JSON.parse(localStorage.getItem('merchantProducts')) || [];
+let merchantUsers = JSON.parse(localStorage.getItem('sociafix_users')) || [];
+
+// ===== RENDER PRODUCTS =====
+function renderProducts(){
+  const productsList = document.getElementById('productsList');
+  productsList.innerHTML = '';
+
+  if(merchantProducts.length === 0){
+    productsList.innerHTML = '<p>No products available.</p>';
+    return;
+  }
+
+  merchantProducts.forEach(p => {
+    const merchant = merchantUsers.find(u => u.email === p.merchantEmail) || {};
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.innerHTML = `
+      <div class="product-info">
+        <h3>${p.name}</h3>
+        <p>Category: ${p.category}</p>
+        <p>Price: $${p.price}</p>
+        <p>Merchant: ${merchant.name || 'Merchant'}</p>
+      </div>
+      <div class="product-actions">
+        <input type="number" min="1" value="1" id="qty${p.id}">
+        <button onclick="placeOrder(${p.id})">Order</button>
+      </div>
+    `;
+    productsList.appendChild(card);
+  });
+}
+
+// ===== PLACE ORDER =====
+function placeOrder(productId){
+  const product = merchantProducts.find(p => p.id === productId);
+  if(!product) return;
+
+  const qty = parseInt(document.getElementById('qty'+productId).value);
+  if(!qty || qty < 1) return alert('Invalid quantity');
+
+  let buyerOrders = JSON.parse(localStorage.getItem('buyerOrders')) || [];
+  let merchantOrders = JSON.parse(localStorage.getItem('merchantOrders')) || [];
+
+  const merchant = merchantUsers.find(u => u.email === product.merchantEmail) || {};
+
+  const newOrder = {
+    id: Date.now(),
+    product: product.name,
+    quantity: qty,
+    merchantEmail: product.merchantEmail,
+    merchantName: merchant.name || 'Merchant',
+    buyerName: buyer.name,
+    buyerEmail: buyer.email,
+    amount: product.price * qty,
+    status: 'Pending',
+    date: new Date().toLocaleString()
+  };
+
+  buyerOrders.push(newOrder);
+  merchantOrders.push(newOrder);
+
+  localStorage.setItem('buyerOrders', JSON.stringify(buyerOrders));
+  localStorage.setItem('merchantOrders', JSON.stringify(merchantOrders));
+
+  // ===== CREATE CONVERSATION =====
+  let conversations = JSON.parse(localStorage.getItem("sf_conversations")) || [];
+
+  conversations.push({
+    orderId: newOrder.id,
+    buyerEmail: buyer.email,
+    merchantEmail: newOrder.merchantEmail,
+    merchantName: newOrder.merchantName,
+    messages: []
+  });
+
+  localStorage.setItem("sf_conversations", JSON.stringify(conversations));
+
+  alert('Order placed successfully!');
+  renderOrders();
+}
+
+// ===== ORDER MANAGEMENT =====
+function cancelOrder(id){
+  let buyerOrders = JSON.parse(localStorage.getItem('buyerOrders')) || [];
+  let merchantOrders = JSON.parse(localStorage.getItem('merchantOrders')) || [];
+
+  buyerOrders.forEach(o => { if(o.id===id && o.status==='Pending') o.status='Canceled'; });
+  merchantOrders.forEach(o => { if(o.id===id && o.status==='Pending') o.status='Canceled'; });
+
+  localStorage.setItem('buyerOrders', JSON.stringify(buyerOrders));
+  localStorage.setItem('merchantOrders', JSON.stringify(merchantOrders));
+  renderOrders();
+}
+
+function deleteOrder(id){
+  let buyerOrders = JSON.parse(localStorage.getItem('buyerOrders')) || [];
+  let merchantOrders = JSON.parse(localStorage.getItem('merchantOrders')) || [];
+
+  buyerOrders = buyerOrders.filter(o => o.id !== id);
+  merchantOrders = merchantOrders.filter(o => o.id !== id);
+
+  localStorage.setItem('buyerOrders', JSON.stringify(buyerOrders));
+  localStorage.setItem('merchantOrders', JSON.stringify(merchantOrders));
+  renderOrders();
+}
+
+// ===== RENDER ORDERS =====
+function renderOrders(){
+  const tbody = document.getElementById('buyerOrdersTable');
+  const buyerOrders = JSON.parse(localStorage.getItem('buyerOrders')) || [];
+  tbody.innerHTML = '';
+
+  buyerOrders.forEach(o => {
+    const row = tbody.insertRow();
+    row.innerHTML = `
+      <td>#ORD-${o.id}</td>
+      <td>${o.product}</td>
+      <td>${o.merchantName}</td>
+      <td>$${o.amount}</td>
+      <td><span class="order-status ${o.status.toLowerCase()}">${o.status}</span></td>
+      <td>
+        <a href="buyer-messages.html" class="action-btn">Message</a>
+        ${o.status === 'Pending' ? `<button onclick="cancelOrder(${o.id})">Cancel</button>` : ''}
+        ${(o.status === 'Canceled' || o.status === 'Completed') ? `<button class="delete-btn" onclick="deleteOrder(${o.id})">Delete</button>` : ''}
+      </td>
+    `;
+  });
+}
+
+// ===== INIT =====
+renderProducts();
+renderOrders();
+</script>
+
+</body>
+</html>
