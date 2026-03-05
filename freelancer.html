@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freelancer Dashboard | SociaFix</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+body{background:#f4f4f4;}
+
+.navbar{
+  background:#203a43;
+  color:#fff;
+  padding:15px 30px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.navbar a{color:#fff;text-decoration:none;font-weight:bold;}
+
+.container{
+  max-width:1000px;
+  margin:30px auto;
+  padding:20px;
+}
+
+.profile-card{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 3px 10px rgba(0,0,0,.1);
+  margin-bottom:20px;
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.profile-card img{
+  width:100px;
+  height:100px;
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid #ff6b6b;
+}
+
+.verified-status{
+  font-weight:bold;
+  padding:5px 10px;
+  border-radius:5px;
+  display:inline-block;
+}
+
+.verified{background:#55efc4;color:#000;}
+.pending{background:#ffeaa7;color:#000;}
+
+.jobs, .gigs, .portfolio, .profile-extra{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  margin-bottom:20px;
+}
+
+.job-card, .gig-card, .portfolio-item{
+  border:1px solid #ddd;
+  padding:12px;
+  border-radius:8px;
+  margin-bottom:10px;
+}
+
+button{
+  padding:6px 12px;
+  border:none;
+  border-radius:5px;
+  background:#ff6b6b;
+  color:#fff;
+  cursor:pointer;
+  font-weight:bold;
+}
+button:disabled{
+  background:#ccc;
+  cursor:not-allowed;
+}
+
+/* ===== Portfolio ===== */
+.portfolio-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:10px;
+}
+.portfolio-item img{
+  width:100%;
+  height:120px;
+  object-fit:cover;
+}
+.portfolio-item div{
+  padding:6px;
+  font-size:13px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+/* ===== Modal ===== */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:100;
+}
+.modal-content{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  width:95%;
+  max-width:400px;
+}
+.modal-content input,textarea{
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+  border-radius:5px;
+  border:1px solid #ccc;
+}
+
+/* Rating stars in modal */
+.star{
+  font-size:24px;
+  cursor:pointer;
+  color:#ccc;
+}
+.star.selected{color:#ff6b6b;}
+
+/* Responsive */
+@media(max-width:600px){
+  .profile-card{
+    flex-direction:column;
+    text-align:center;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <strong>SociaFix</strong>
+  <a href="#" id="logoutBtn">Logout</a>
+</div>
+
+<div class="container">
+
+  <!-- Freelancer Profile -->
+  <div class="profile-card">
+    <img id="freelancerPic" src="img-freelancer.png">
+    <div>
+      <h2 id="freelancerName"></h2>
+      <p id="freelancerEmail"></p>
+      <p><b>Rating:</b> <span id="ratingStars"></span></p>
+      <p>Status: <span id="verificationStatus" class="verified-status"></span></p><br>
+      <button onclick="openEditProfileModal()">Edit Profile</button>
+      <button onclick="openPortfolioModal()">+ Add Portfolio</button>
+    </div>
+  </div>
+
+  <!-- Profile Extra -->
+  <div class="profile-extra">
+    <h4>Bio</h4>
+    <p id="bioText">Not added</p>
+    <h4>Skills</h4>
+    <p id="skillsText">Not added</p>
+    <h4>Languages</h4>
+    <p id="languagesText">Not added</p>
+  </div>
+
+  <!-- Portfolio -->
+  <div class="portfolio">
+    <h3>My Portfolio</h3>
+    <div class="portfolio-grid" id="portfolioGrid"></div>
+  </div>
+
+  <!-- Jobs -->
+  <div class="jobs">
+    <h3>Available Client Jobs</h3>
+    <div id="jobsList"></div>
+  </div>
+
+  <!-- My Gigs -->
+  <div class="gigs">
+    <h3>My Gigs</h3>
+    <button onclick="openGigModal()">+ Add Gig</button>
+    <div id="gigsList"></div>
+  </div>
+
+</div>
+
+<!-- ===== Modals ===== -->
+
+<!-- Edit Profile -->
+<div class="modal" id="editProfileModal">
+  <div class="modal-content">
+    <h3>Edit Profile</h3>
+    <input type="file" id="photoInput">
+    <textarea id="bioInput" placeholder="Bio"></textarea>
+    <input id="skillsInput" placeholder="Skills (comma separated)">
+    <input id="languagesInput" placeholder="Languages (comma separated)">
+    <button onclick="saveProfile()">Save</button>
+  </div>
+</div>
+
+<!-- Add Portfolio -->
+<div class="modal" id="portfolioModal">
+  <div class="modal-content">
+    <h3>Add / Edit Project</h3>
+    <input type="file" id="portfolioImage">
+    <input id="projectTitle" placeholder="Project title">
+    <textarea id="projectDesc" placeholder="Project description"></textarea>
+    <button onclick="addPortfolio()">Save</button>
+  </div>
+</div>
+
+<!-- Add Gig -->
+<div class="modal" id="gigModal">
+  <div class="modal-content">
+    <h3>Add / Edit Gig</h3>
+    <input id="gigTitle" placeholder="Gig title">
+    <textarea id="gigDesc" placeholder="Gig description"></textarea>
+    <button onclick="saveGig()">Save</button>
+  </div>
+</div>
+
+<script>
+// ===== Local Storage Keys =====
+const USERS_KEY='sociafix_users';
+const SESSION_KEY='sociafix_user';
+
+// ===== DOM Elements =====
+const freelancerName=document.getElementById('freelancerName');
+const freelancerEmail=document.getElementById('freelancerEmail');
+const freelancerPic=document.getElementById('freelancerPic');
+const jobsList=document.getElementById('jobsList');
+const verificationStatus=document.getElementById('verificationStatus');
+const ratingStars=document.getElementById('ratingStars');
+const bioText=document.getElementById('bioText');
+const skillsText=document.getElementById('skillsText');
+const languagesText=document.getElementById('languagesText');
+const portfolioGrid=document.getElementById('portfolioGrid');
+const gigsList=document.getElementById('gigsList');
+
+const bioInput=document.getElementById('bioInput');
+const skillsInput=document.getElementById('skillsInput');
+const languagesInput=document.getElementById('languagesInput');
+const photoInput=document.getElementById('photoInput');
+const portfolioImage=document.getElementById('portfolioImage');
+const projectTitle=document.getElementById('projectTitle');
+const projectDesc=document.getElementById('projectDesc');
+const editProfileModal=document.getElementById('editProfileModal');
+const portfolioModal=document.getElementById('portfolioModal');
+const gigModal=document.getElementById('gigModal');
+
+let freelancer=JSON.parse(localStorage.getItem(SESSION_KEY));
+if(!freelancer || freelancer.role!=='freelancer') location.href='register.html';
+
+freelancer.portfolio=freelancer.portfolio||[];
+freelancer.gigs=freelancer.gigs||[];
+freelancer.ratings=freelancer.ratings||[];
+
+// ===== Helper: Sync Data =====
+function syncFreelancer(){
+  let users=JSON.parse(localStorage.getItem(USERS_KEY))||[];
+  const i=users.findIndex(u=>u.email===freelancer.email);
+  if(i!==-1) users[i]=freelancer;
+  localStorage.setItem(USERS_KEY,JSON.stringify(users));
+  localStorage.setItem(SESSION_KEY,JSON.stringify(freelancer));
+}
+
+// ===== Load Profile =====
+function loadProfile(){
+  freelancerName.innerText=freelancer.name;
+  freelancerEmail.innerText=freelancer.email;
+  if(freelancer.profilePic) freelancerPic.src=freelancer.profilePic;
+  bioText.innerText=freelancer.bio||"Not added";
+  skillsText.innerText=freelancer.skills||"Not added";
+  languagesText.innerText=freelancer.languages||"Not added";
+  renderRatings();
+  renderPortfolio();
+  renderGigs();
+  renderJobs();
+  renderVerificationStatus();
+}
+
+// ===== Verification Status =====
+if(freelancer.verified===undefined) freelancer.verified=false;
+function renderVerificationStatus(){
+  verificationStatus.innerText=freelancer.verified?"Verified":"Pending Admin Approval";
+  verificationStatus.className="verified-status "+(freelancer.verified?"verified":"pending");
+}
+
+// ===== Ratings =====
+function renderRatings(){
+  if(!freelancer.ratings.length){ ratingStars.innerText="No ratings yet"; return; }
+  let avg=freelancer.ratings.reduce((a,b)=>a+b.stars,0)/freelancer.ratings.length;
+  avg=Math.round(avg*2)/2;
+  let fullStars=Math.floor(avg);
+  let halfStar=avg%1>=0.5?1:0;
+  let emptyStars=5-fullStars-halfStar;
+  let starsHTML="★".repeat(fullStars);
+  if(halfStar) starsHTML+="✩";
+  starsHTML+="☆".repeat(emptyStars);
+  ratingStars.innerText=starsHTML+" ("+avg.toFixed(1)+")";
+}
+
+// ===== Edit Profile =====
+function openEditProfileModal(){
+  editProfileModal.style.display='flex';
+  bioInput.value=freelancer.bio||"";
+  skillsInput.value=freelancer.skills||"";
+  languagesInput.value=freelancer.languages||"";
+}
+photoInput.onchange=function(){
+  const file=this.files[0];
+  if(file){
+    const reader=new FileReader();
+    reader.onload=()=> freelancer.profilePic=reader.result;
+    reader.readAsDataURL(file);
+  }
+}
+function saveProfile(){
+  freelancer.bio=bioInput.value.trim();
+  freelancer.skills=skillsInput.value.trim();
+  freelancer.languages=languagesInput.value.trim();
+  syncFreelancer();
+  editProfileModal.style.display='none';
+  loadProfile();
+}
+
+// ===== Portfolio =====
+function renderPortfolio(){
+  portfolioGrid.innerHTML="";
+  freelancer.portfolio.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='portfolio-item';
+    div.innerHTML=`<img src="${p.image}">
+      <div>
+        <span><strong>${p.title}</strong></span>
+        <div>
+          <button onclick="editPortfolio(${i})">Edit</button>
+          <button onclick="deletePortfolio(${i})">Delete</button>
+        </div>
+      </div>`;
+    portfolioGrid.appendChild(div);
+  });
+}
+function openPortfolioModal(){
+  portfolioModal.style.display='flex';
+  projectTitle.value="";
+  projectDesc.value="";
+  portfolioImage.value="";
+}
+function addPortfolio(){
+  const file=portfolioImage.files[0];
+  if(!file) return alert("Select image");
+  const reader=new FileReader();
+  reader.onload=()=>{
+    freelancer.portfolio.push({title:projectTitle.value,desc:projectDesc.value,image:reader.result});
+    syncFreelancer(); renderPortfolio(); portfolioModal.style.display='none';
+  }
+  reader.readAsDataURL(file);
+}
+function editPortfolio(i){
+  const p=freelancer.portfolio[i];
+  projectTitle.value=p.title;
+  projectDesc.value=p.desc;
+  portfolioModal.style.display='flex';
+  portfolioImage.value="";
+  document.querySelector('#portfolioModal button').onclick=()=>{
+    const file=portfolioImage.files[0];
+    if(file){
+      const reader=new FileReader();
+      reader.onload=()=>{ p.title=projectTitle.value; p.desc=projectDesc.value; p.image=reader.result; syncFreelancer(); renderPortfolio(); portfolioModal.style.display='none'; };
+      reader.readAsDataURL(file);
+    }else{ p.title=projectTitle.value; p.desc=projectDesc.value; syncFreelancer(); renderPortfolio(); portfolioModal.style.display='none'; }
+  }
+}
+function deletePortfolio(i){ if(confirm("Delete project?")){ freelancer.portfolio.splice(i,1); syncFreelancer(); renderPortfolio(); }}
+
+// ===== Gigs =====
+function renderGigs(){
+  gigsList.innerHTML="";
+  freelancer.gigs.forEach((g,i)=>{
+    const div=document.createElement('div');
+    div.className='gig-card';
+    div.innerHTML=`<p><strong>${g.title}</strong></p><p>${g.desc}</p>
+      <button onclick="editGig(${i})">Edit</button>
+      <button onclick="deleteGig(${i})">Delete</button>`;
+    gigsList.appendChild(div);
+  });
+}
+function openGigModal(){
+  gigModal.style.display='flex';
+  gigTitle.value=""; gigDesc.value="";
+  document.querySelector('#gigModal button').onclick=saveGig;
+}
+function saveGig(){
+  const title=gigTitle.value.trim();
+  const desc=gigDesc.value.trim();
+  if(!title||!desc) return alert("Fill all fields");
+  freelancer.gigs.push({title,desc});
+  syncFreelancer(); renderGigs(); gigModal.style.display='none';
+}
+function editGig(i){
+  const g=freelancer.gigs[i];
+  gigTitle.value=g.title; gigDesc.value=g.desc;
+  gigModal.style.display='flex';
+  document.querySelector('#gigModal button').onclick=()=>{
+    g.title=gigTitle.value; g.desc=gigDesc.value;
+    syncFreelancer(); renderGigs(); gigModal.style.display='none';
+  }
+}
+
+// ===== Jobs =====
+function renderJobs(){
+  jobsList.innerHTML='';
+  const usersLS = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  const clients = usersLS.filter(u => u.role === 'client');
+  let allJobs = [];
+
+  clients.forEach(client => {
+    (client.jobs || []).forEach(job => {
+      allJobs.push({
+        clientName: client.name,
+        clientEmail: client.email,
+        title: job.title,
+        desc: job.desc,
+        freelancers: job.freelancers || []
+      });
+    });
+  });
+
+  if(!allJobs.length){
+    jobsList.innerHTML = "<p>No jobs available yet.</p>";
+    return;
+  }
+
+  allJobs.forEach((job, idx) => {
+    const div = document.createElement('div');
+    div.className = 'job-card';
+
+    // Check if freelancer already applied
+    const applied = job.freelancers.some(f => f.email === freelancer.email);
+    const applyBtn = applied
+      ? `<button disabled>Applied</button>`
+      : `<button onclick="applyJob(${idx})">Apply</button>`;
+
+    div.innerHTML = `
+      <h4>${job.title}</h4>
+      <p>${job.desc}</p>
+      <p><b>Client:</b> ${job.clientName}</p>
+      ${applyBtn}
+    `;
+    jobsList.appendChild(div);
+  });
+
+  // Store jobs globally for apply function
+  window.freelancerJobs = allJobs;
+}
+
+// Apply to job
+function applyJob(idx){
+  const job = window.freelancerJobs[idx];
+  if(!job) return;
+
+  // Add freelancer to client's job
+  const usersLS = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  const client = usersLS.find(u => u.email === job.clientEmail);
+  if(!client) return;
+
+  const clientJob = client.jobs.find(j => j.title === job.title && j.desc === job.desc);
+  if(!clientJob.freelancers) clientJob.freelancers = [];
+  clientJob.freelancers.push({name: freelancer.name, email: freelancer.email, status: 'applied'});
+
+  // Save back
+  localStorage.setItem(USERS_KEY, JSON.stringify(usersLS));
+  alert('Applied to job successfully!');
+  renderJobs();
+}
+
+// ===== Logout =====
+document.getElementById('logoutBtn').onclick=()=>{
+  localStorage.removeItem(SESSION_KEY); location.href='register.html';
+}
+
+// ===== Initial Load =====
+loadProfile();
+</script>
+</body>
+</html>
